@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        /* CSS không thay đổi, giữ nguyên như phiên bản trước */
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;700&display=swap');
         :root {
             --primary-color: #ff7e9a; --secondary-color: #8A2BE2; --light-color: #fff; --text-color: #4a4a4a;
@@ -18,10 +17,17 @@
             --info-color: #3498db; --info-hover-color: #2980b9;
             --warning-color: #f39c12; --warning-hover-color: #e67e22;
         }
+        html { scroll-behavior: smooth; }
         body { font-family: 'Quicksand', sans-serif; line-height: 1.7; margin: 0; background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: var(--text-color); }
         #app-root { display: flex; flex-direction: column; min-height: 100vh; }
         #app-body { display: flex; flex-grow: 1; }
-        #sidebar-nav { width: 260px; background: var(--card-bg-color); padding: 20px; display: flex; flex-direction: column; box-shadow: 5px 0 15px rgba(0,0,0,0.05); z-index: 10; }
+        #sidebar-nav {
+            width: 260px; background: var(--card-bg-color); padding: 20px; display: flex; flex-direction: column; box-shadow: 5px 0 15px rgba(0,0,0,0.05); z-index: 10;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            flex-shrink: 0; /* Không cho phép co lại */
+        }
         #main-content-area { flex-grow: 1; padding: 30px; overflow-y: auto; }
         .card { background: var(--card-bg-color); padding: 30px; border-radius: var(--border-radius); box-shadow: var(--shadow); }
         h2 { margin-top: 0; color: var(--primary-color); display: flex; align-items: center; }
@@ -93,8 +99,49 @@
         .passage-block { background: #f7f7f7; border-left: 4px solid var(--primary-color); padding: 15px; margin-bottom: 20px; border-radius: 8px; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
         .history-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
         .btn-review { font-size: 0.8em; padding: 4px 8px; margin-left: 10px; background-color: var(--info-color); color: white; border-radius: 5px; border: none; cursor: pointer; }
-        @media (max-width: 992px) { #user-dashboard-layout { flex-direction: column; } }
-        @media (max-width: 768px) { #app-body { flex-direction: column; } #sidebar-nav { width: 100%; height: auto; flex-direction: row; justify-content: space-around; padding: 10px; } #main-content-area { padding: 15px; } }
+        
+        #quiz-palette-container {
+            width: 280px;
+            padding: 30px 30px 30px 0;
+            flex-shrink: 0;
+            display: none; /* Ẩn mặc định */
+        }
+        #quiz-palette-container.visible {
+            display: block; /* Hiện khi làm bài */
+        }
+        .quiz-palette {
+            position: sticky;
+            top: 30px;
+            background: var(--card-bg-color);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+        .palette-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 10px; max-height: calc(100vh - 150px); /* Chiều cao tối đa, có thể cuộn */ overflow-y: auto;
+            padding-right: 5px;
+        }
+        .palette-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px; border: 1px solid #ddd;
+            border-radius: 8px; text-decoration: none; color: var(--text-color);
+            font-weight: 700; transition: all 0.2s ease;
+        }
+        .palette-btn:hover { background-color: #f0e6f6; border-color: var(--secondary-color); }
+        .palette-btn.answered { background-color: var(--success-color); color: white; border-color: var(--success-color); }
+
+        @media (max-width: 1200px) { /* Ẩn bảng chọn trên màn hình nhỏ hơn */
+            #quiz-palette-container { display: none; }
+        }
+        @media (max-width: 992px) {
+            #user-dashboard-layout { flex-direction: column; }
+        }
+        @media (max-width: 768px) {
+            #app-body { flex-direction: column; }
+            #sidebar-nav { width: 100%; height: auto; flex-direction: row; justify-content: space-around; padding: 10px; position: static; }
+            #main-content-area { padding: 15px; }
+        }
     </style>
 </head>
 <body>
@@ -114,11 +161,11 @@
         <symbol id="icon-fire" viewBox="0 0 24 24"><path fill="currentColor" d="M17.5,2.5c-2.2,0-3.9,1.8-3.9,4c0,1.5,0.8,2.8,2,3.5c-0.6,0.3-1.1,0.8-1.5,1.4C13,12,12.5,13.2,12.5,14.5c0,1.3,0.5,2.5,1.4,3.4c0.9,0.9,2.1,1.4,3.4,1.4c1.3,0,2.5-0.5,3.4-1.4c0.9-0.9,1.4-2.1,1.4-3.4c0-1.3-0.5-2.5-1.4-3.4c-0.4-0.6-0.9-1.1-1.5-1.4c1.2-0.7,2-2,2-3.5C21.4,4.3,19.7,2.5,17.5,2.5z M10.4,8.5C10.8,8.2,11,7.8,11,7.2c0-1-0.8-1.8-1.8-1.8S7.5,6.2,7.5,7.2c0,0.5,0.2,1,0.5,1.3C6.7,9.2,6,10.6,6,12.2c0,1.7,0.7,3.2,1.8,4.3c1.1,1.1,2.6,1.8,4.3,1.8c0.8,0,1.6-0.2,2.3-0.5c-1.2-0.9-2-2.3-2-3.8c0-1.6,0.8-3,2-3.8C13.5,9.6,12.2,9,10.4,8.5z"/></symbol>
         <symbol id="icon-dashboard" viewBox="0 0 24 24"><path fill="currentColor" d="M13 3v6h8V3h-8zM3 13v8h8v-8H3zm6 6H5v-4h4v4zm-6-8h8V3H3v8zm2-6h4v4H5V5zM13 21v-6h8v6h-8zm2-4h4v2h-4v-2z"/></symbol>
         <symbol id="icon-lightbulb" viewBox="0 0 24 24"><path fill="currentColor" d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74c0-3.86-3.14-7-7-7z"/></symbol>
+        <symbol id="icon-clock" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" transform="translate(0 1) scale(0.9)"/></symbol>
     </svg>
     <div id="app-root"></div>
 
     <script>
-        // Copy firebaseConfig của bạn vào đây
         const firebaseConfig = { apiKey: "AIzaSyBdBitxn6awNnMNo635WtDNSKuNodp9ACI", authDomain: "my-sql-to-english.firebaseapp.com", databaseURL: "https://my-sql-to-english-default-rtdb.firebaseio.com", projectId: "my-sql-to-english", storageBucket: "my-sql-to-english.firebasestorage.app", messagingSenderId: "56688139064", appId: "1:56688139064:web:48ec3e898815f3c56e7fcd", measurementId: "G-34BJ7YEY5R" };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
@@ -128,24 +175,34 @@
             landing: `<div id="landing-view" style="text-align: center; padding: 50px 20px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;"><h1>Chào mừng đến với<br>Nền tảng Luyện Thi Tiếng Anh</h1><p style="font-size: 1.2em; max-width: 600px;">Chinh phục các bài thi đầu vào đại học một cách tự tin và hiệu quả.</p><div id="login-card-wrapper" class="login-card card" style="max-width: 400px; width: 100%; margin-top: 40px;"></div></div>`,
             loginForm: `<form id="login-form"><h2>Đăng Nhập</h2><div class="input-group"><label for="login-username">Tên đăng nhập</label><input type="text" id="login-username" required></div><div class="input-group"><label for="login-password">Mật khẩu</label><input type="password" id="login-password" required></div><button class="action-button" type="submit">Đăng Nhập</button><p style="text-align:center; margin-top:15px; cursor:pointer;" onclick="app.render('registerForm', '#login-card-wrapper')">Chưa có tài khoản? <span style="color:var(--primary-color); font-weight:700;">Đăng ký ngay</span></p></form>`,
             registerForm: `<form id="register-form"><h2>Đăng Ký</h2><div class="input-group"><label for="register-username">Tên đăng nhập</label><input type="text" id="register-username" required></div><div class="input-group"><label for="register-password">Mật khẩu</label><input type="password" id="register-password" required></div><button class="action-button" type="submit">Đăng Ký</button><p style="text-align:center; margin-top:15px; cursor:pointer;" onclick="app.render('loginForm', '#login-card-wrapper')">Đã có tài khoản? <span style="color:var(--primary-color); font-weight:700;">Đăng nhập</span></p></form>`,
-            appLayout: `<div id="app-body"><nav id="sidebar-nav"><div class="sidebar-header"><div class="icon">🎓</div><h3 id="welcome-user"></h3></div><div id="sidebar-menu"></div><div class="sidebar-footer"><button class="action-button logout-btn" style="background: #e74c3c; font-size:1em;"><svg class="icon" style="width:1em;height:1em;vertical-align:-0.125em;"><use href="#icon-logout"></use></svg> Đăng Xuất</button></div></nav><main id="main-content-area"></main></div>`,
+            appLayout: `<div id="app-body"><nav id="sidebar-nav"><div class="sidebar-header"><div class="icon">🎓</div><h3 id="welcome-user"></h3></div><div id="sidebar-menu"></div><div class="sidebar-footer"><button class="action-button logout-btn" style="background: #e74c3c; font-size:1em;"><svg class="icon" style="width:1em;height:1em;vertical-align:-0.125em;"><use href="#icon-logout"></use></svg> Đăng Xuất</button></div></nav><main id="main-content-area"></main><aside id="quiz-palette-container"></aside></div>`,
             adminCreateTest: `<div class="card"> <h2 id="create-edit-title">Tạo Đề Thi Mới</h2> <p style="font-size:0.9em; color:#888;"><b>Mẹo:</b> Để tạo đoạn văn, hãy bắt đầu bằng <b>[PASSAGE]</b>. Các câu hỏi theo sau vẫn giữ nguyên định dạng.</p> <input type="hidden" id="test-id-edit"> <div class="input-group"><label>Tên Đề Thi:</label><input type="text" id="test-title"></div> <div class="input-group"><label>Thời gian (phút):</label><input type="number" id="test-time"></div> <div class="input-group"><label>Số lần làm tối đa:</label><input type="number" id="test-attempts" placeholder="Để trống cho vô hạn"></div> <div class="input-group"><label>Phân loại:</label><select id="test-category"></select></div> <div class="checkbox-group"><input type="checkbox" id="allow-view-answer" checked><label for="allow-view-answer">Cho phép xem đáp án và giải thích</label></div> <div class="input-group"><label>URL file nghe:</label><input type="text" id="test-audio-url" placeholder="Để trống nếu không phải đề nghe"></div> <div class="input-group"><label>Nội dung câu hỏi:</label><textarea id="quiz-input" placeholder="Soạn đề thi tại đây..."></textarea></div> <button class="action-button" id="save-test-btn">LƯU ĐỀ THI</button> </div>`,
             adminManage: `<div class="card"><h2><svg class="icon"><use href="#icon-list"></use></svg> Quản Lý Đề Thi</h2><div id="admin-test-list"></div></div>`,
             adminManageUsers: `<div class="card"><h2><svg class="icon"><use href="#icon-users"></use></svg> Quản Lý Tài Khoản</h2><div id="user-management-table"></div></div>`,
             userDashboard: `<div id="user-dashboard-layout"><div id="user-dashboard-main"><div id="user-stats-card-container"></div><div class="card"><h2><svg class="icon"><use href="#icon-list"></use></svg> Chọn Chuyên Mục</h2><div id="category-showcase-grid"></div></div></div><div id="user-dashboard-sidebar"><div class="card"><h2><svg class="icon"><use href="#icon-cup"></use></svg> Bảng Xếp Hạng</h2><small id="leaderboard-timer"></small><div id="leaderboard-container"></div></div><div class="card"><h2><svg class="icon"><use href="#icon-chart"></use></svg> Tiến độ của bạn</h2><canvas id="progress-chart"></canvas></div><div id="user-history-card" class="card"><h2><svg class="icon"><use href="#icon-history"></use></svg> Lịch sử làm bài</h2><div id="user-history"></div></div></div></div>`,
-            categoryView: `<div class="card"><button onclick="app.renderView('userDashboard')" style="background: #ccc; color:#333; width:auto; padding: 8px 15px; font-size: 0.9em; margin-bottom: 20px;" class="action-button">← Quay lại</button><h2 id="category-view-title"></h2><div id="test-grid"></div></div>`,
+            categoryView: `<div class="card"><button onclick="app.navigate('userDashboard')" style="background: #ccc; color:#333; width:auto; padding: 8px 15px; font-size: 0.9em; margin-bottom: 20px;" class="action-button">← Quay lại</button><h2 id="category-view-title"></h2><div id="test-grid"></div></div>`,
             resultsView: `<div class="card"><h2 id="results-title">Kết quả bài thi</h2><h3 id="score-summary" style="font-size: 1.8em; text-align: center; color: var(--secondary-color);"></h3><div id="results-breakdown"></div><button id="back-btn" class="action-button" style="margin-top: 20px;">Về trang chính</button></div>`
         };
 
         const app = {
             currentUser: null, currentQuiz: null, timerInterval: null, progressChart: null, leaderboardTimerInterval: null,
+            isQuizActive: false, 
             users: [], tests: [], scores: [],
             studyTips: ["Đừng học nhồi nhét. Chia nhỏ thời gian học thành các phiên ngắn sẽ hiệu quả hơn.", "Dạy lại cho người khác là cách tốt nhất để kiểm tra kiến thức của chính mình.", "Ngủ đủ giấc. Một bộ não được nghỉ ngơi sẽ tiếp thu thông tin tốt hơn rất nhiều.", "Luyện tập với các đề thi cũ để làm quen với cấu trúc và áp lực thời gian.", "Hãy đặt mục tiêu thực tế và ăn mừng những thành tích nhỏ trên con đường chinh phục mục tiêu lớn.", "Học từ vựng theo chủ đề sẽ giúp bạn nhớ lâu và có hệ thống hơn.", "Đừng ngại mắc lỗi. Lỗi sai là cơ hội để bạn học hỏi và trở nên tốt hơn."],
         
             async init() { document.getElementById('app-root').innerHTML = '<h2 style="text-align:center; padding-top: 50px;">Đang tải dữ liệu, vui lòng chờ...</h2>'; await this.loadData(); const loggedInUser = sessionStorage.getItem('quiz_currentUser_v4'); if (loggedInUser) { this.currentUser = JSON.parse(loggedInUser); this.render('appLayout'); } else { this.render('landing'); } },
             async loadData() { try { const snapshot = await db.ref().once('value'); const data = snapshot.val() || {}; this.users = data.users ? Object.values(data.users) : []; this.tests = data.tests ? Object.values(data.tests) : []; this.scores = data.scores ? Object.values(data.scores) : []; const adminExists = this.users.some(u => u.username === 'admin'); if (!adminExists) { const adminUser = { username: 'admin', password: 'admin', isAdmin: true, isBanned: false }; await db.ref('users/admin').set(adminUser); this.users.push(adminUser); } } catch (error) { console.error("Lỗi khi tải dữ liệu từ Firebase:", error); alert("Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra lại cấu hình Firebase của bạn."); } },
             render(templateName, targetSelector = '#app-root') { const target = document.querySelector(targetSelector); if(target) target.innerHTML = templates[templateName] || ''; this.addEventListeners(templateName); },
-            renderContent(templateName) { this.render(templateName, '#main-content-area'); },
+            renderContent(templateName, clearPalette = true) {
+                this.render(templateName, '#main-content-area');
+                if (clearPalette) {
+                    const paletteContainer = document.getElementById('quiz-palette-container');
+                    if (paletteContainer) {
+                        paletteContainer.innerHTML = '';
+                        paletteContainer.classList.remove('visible');
+                    }
+                }
+            },
             addEventListeners(viewName) {
                 if (viewName === 'landing') this.render('loginForm', '#login-card-wrapper');
                 if (viewName === 'loginForm') document.getElementById('login-form').addEventListener('submit', (e) => { e.preventDefault(); this.login(); });
@@ -159,6 +216,18 @@
                 if(viewName === 'adminCreateTest') {
                     document.getElementById('save-test-btn').addEventListener('click', this.saveTest.bind(this));
                     document.getElementById('test-category').innerHTML = CATEGORIES.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('');
+                }
+            },
+            navigate(viewName, data = {}) {
+                if (this.isQuizActive) {
+                    if (confirm('Bạn đang trong bài thi. Bạn có chắc chắn muốn rời đi? Mọi tiến trình sẽ bị mất.')) {
+                        this.isQuizActive = false;
+                        clearInterval(this.timerInterval);
+                        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+                        this.renderView(viewName, data);
+                    }
+                } else {
+                    this.renderView(viewName, data);
                 }
             },
             async renderView(viewName, data = {}) {
@@ -175,10 +244,28 @@
                 if (viewName === 'categoryView') this.renderTestGridForCategory(data.categoryName);
                 if (viewName === 'resultsView') this.renderResults(data.scoreRecordKey);
             },
-            renderSidebar() { const menu = document.getElementById('sidebar-menu'); menu.innerHTML = ''; let navItems = this.currentUser.isAdmin ? [ { view: 'userDashboard', icon: 'dashboard', text: 'Trang Chính' }, { view: 'adminCreateTest', icon: 'plus', text: 'Tạo Đề Mới' }, { view: 'adminManage', icon: 'list', text: 'Quản Lý Đề' }, { view: 'adminManageUsers', icon: 'users', text: 'Quản Lý Tài Khoản' } ] : [ { view: 'userDashboard', icon: 'dashboard', text: 'Trang Chính' } ]; navItems.forEach(item => { const btn = document.createElement('button'); btn.className = 'sidebar-nav-btn'; btn.innerHTML = `<svg class="icon" style="width:1.5em; height:1.5em; margin-right: 15px;"><use href="#icon-${item.icon}"></use></svg><span>${item.text}</span>`; btn.onclick = () => this.renderView(item.view, { icon: item.icon }); menu.appendChild(btn); }); },
+            renderSidebar() {
+                const menu = document.getElementById('sidebar-menu');
+                menu.innerHTML = '';
+                let navItems = this.currentUser.isAdmin ? [
+                    { view: 'userDashboard', icon: 'dashboard', text: 'Trang Chính' },
+                    { view: 'adminCreateTest', icon: 'plus', text: 'Tạo Đề Mới' },
+                    { view: 'adminManage', icon: 'list', text: 'Quản Lý Đề' },
+                    { view: 'adminManageUsers', icon: 'users', text: 'Quản Lý Tài Khoản' }
+                ] : [
+                    { view: 'userDashboard', icon: 'dashboard', text: 'Trang Chính' }
+                ];
+                navItems.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'sidebar-nav-btn';
+                    btn.innerHTML = `<svg class="icon" style="width:1.5em; height:1.5em; margin-right: 15px;"><use href="#icon-${item.icon}"></use></svg><span>${item.text}</span>`;
+                    btn.onclick = () => this.navigate(item.view, { icon: item.icon });
+                    menu.appendChild(btn);
+                });
+            },
             async login() { const username = document.getElementById('login-username').value; const password = document.getElementById('login-password').value; await this.loadData(); const foundUser = this.users.find(usr => usr.username === username && usr.password === password); if (foundUser) { if (foundUser.isBanned) { alert('Tài khoản của bạn đã bị khóa.'); return; } this.currentUser = foundUser; sessionStorage.setItem('quiz_currentUser_v4', JSON.stringify(this.currentUser)); this.render('appLayout'); } else { alert('Tài khoản hoặc mật khẩu không đúng!'); } },
             async register() { const username = document.getElementById('register-username').value; const password = document.getElementById('register-password').value; if (!username.trim() || !password.trim()) { alert("Vui lòng điền đủ thông tin!"); return; } await this.loadData(); if (this.users.find(usr => usr.username === username)) { alert('Tên đăng nhập đã tồn tại!'); return; } const newUser = { username, password, isAdmin: false, isBanned: false }; try { await db.ref('users/' + username).set(newUser); alert('Đăng ký thành công!'); this.render('loginForm', '#login-card-wrapper'); } catch (error) { console.error("Lỗi khi đăng ký:", error); alert("Đã xảy ra lỗi khi đăng ký. Vui lòng thử lại."); } },
-            logout() { this.currentUser = null; clearInterval(this.leaderboardTimerInterval); sessionStorage.removeItem('quiz_currentUser_v4'); this.render('landing'); },
+            logout() { this.navigate('landing'); },
             async promptEditPassword(username) { const newPassword = prompt(`Nhập mật khẩu mới cho tài khoản "${username}":`); if (newPassword && newPassword.trim() !== '') { try { await db.ref('users/' + username + '/password').set(newPassword.trim()); alert(`Đã cập nhật mật khẩu cho ${username}.`); this.renderView('adminManageUsers', { forceReload: true, icon: 'users' }); } catch(error) { alert("Có lỗi xảy ra, không thể cập nhật."); } } else if (newPassword !== null) { alert("Mật khẩu không được để trống."); } },
             async toggleBanUser(username) { const user = this.users.find(u => u.username === username); if (user) { try { const newBanStatus = !user.isBanned; await db.ref('users/' + username + '/isBanned').set(newBanStatus); alert(`Đã ${newBanStatus ? 'cấm' : 'bỏ cấm'} tài khoản ${username}.`); this.renderView('adminManageUsers', { forceReload: true, icon: 'users' }); } catch(error) { alert("Có lỗi xảy ra, không thể cập nhật."); } } },
             async clearUserScores(username) { if (confirm(`Bạn có chắc chắn muốn xóa TOÀN BỘ điểm của người dùng "${username}"? Hành động này không thể hoàn tác.`)) { try { const scoresSnapshot = await db.ref('scores').orderByChild('username').equalTo(username).once('value'); const scoresToDelete = scoresSnapshot.val(); if (scoresToDelete) { const updates = {}; Object.keys(scoresToDelete).forEach(key => { updates[key] = null; }); await db.ref('scores').update(updates); } alert(`Đã xóa toàn bộ điểm của ${username}.`); this.renderView('adminManageUsers', { forceReload: true, icon: 'users' }); } catch (error) { console.error("Lỗi khi xóa điểm:", error); alert("Đã xảy ra lỗi."); } } },
@@ -193,7 +280,11 @@
                         const scoresData = scoresSnapshot.val();
                         if (scoresData) {
                             const updates = {}; let foundScores = false;
-                            for (const key in scoresData) { if (scoresData[key].testId === testId) { updates[key] = null; foundScores = true; } }
+                            for (const key in scoresData) {
+                                if (scoresData[key].testId == testId) { 
+                                    updates[key] = null; foundScores = true; 
+                                } 
+                            }
                             if (foundScores) { await db.ref('scores').update(updates); alert(`Đã reset lượt thi cho "${username}" thành công.`); this.renderView('adminManage', { forceReload: true, icon: 'list' }); } 
                             else { alert(`Không tìm thấy lượt thi nào của "${username}" cho đề này.`); }
                         } else { alert(`Người dùng "${username}" chưa có điểm nào.`); }
@@ -201,43 +292,225 @@
                 }
             },
             async saveTest() { const testId = document.getElementById('test-id-edit').value || Date.now(); const testData = { id: testId, title: document.getElementById('test-title').value.trim(), timeLimit: parseInt(document.getElementById('test-time').value, 10), maxAttempts: document.getElementById('test-attempts').value ? parseInt(document.getElementById('test-attempts').value, 10) : Infinity, category: document.getElementById('test-category').value, showAnswers: document.getElementById('allow-view-answer').checked, audioUrl: document.getElementById('test-audio-url').value.trim(), questions: this.parseQuizText(document.getElementById('quiz-input').value.trim()) }; if (!testData.title || !testData.timeLimit || testData.questions.length === 0) { alert("Vui lòng điền đủ các trường bắt buộc!"); return; } try { await db.ref('tests/' + testId).set(testData); alert(`Đã lưu thành công!`); this.renderView('adminManage', { forceReload: true, icon: 'list' }); } catch (error) { console.error("Lỗi khi lưu đề thi:", error); alert("Đã xảy ra lỗi khi lưu đề thi."); } },
-            editTest(testId) { this.renderView('adminCreateTest'); setTimeout(() => { const test = this.tests.find(t => t.id === testId); if (!test) return; document.getElementById('create-edit-title').innerText = "Chỉnh Sửa Đề Thi"; document.getElementById('test-id-edit').value = test.id; document.getElementById('test-title').value = test.title; document.getElementById('test-time').value = test.timeLimit; document.getElementById('test-attempts').value = test.maxAttempts === Infinity ? '' : test.maxAttempts; document.getElementById('test-category').value = test.category; document.getElementById('allow-view-answer').checked = test.showAnswers !== false; document.getElementById('test-audio-url').value = test.audioUrl; document.getElementById('save-test-btn').innerText = "CẬP NHẬT"; const rawText = test.questions.map(q => { let str = ''; if (q.type === 'passage_question' && q.isFirstInGroup) { str += `[PASSAGE]\n${q.passage}\n---\n`; } str += q.prompt + '\n'; for (const key in q.options) { str += `${key}${q.answer === key ? '*' : ''}) ${q.options[key]}\n`; } if (q.explanation) { str += `[GTHICH] ${q.explanation}`; } return str; }).join('\n---\n'); document.getElementById('quiz-input').value = rawText; }, 0); },
-            async deleteTest(testId) { const testToDelete = this.tests.find(t => t.id === testId); if (!testToDelete) return; if (confirm(`Bạn có chắc chắn muốn xóa đề thi "${testToDelete.title}"? Tất cả kết quả liên quan cũng sẽ bị xóa vĩnh viễn!`)) { try { await db.ref('tests/' + testId).remove(); const scoresSnapshot = await db.ref('scores').orderByChild('testId').equalTo(testId).once('value'); const scoresToDelete = scoresSnapshot.val(); if (scoresToDelete) { const updates = {}; Object.keys(scoresToDelete).forEach(key => { updates[key] = null; }); await db.ref('scores').update(updates); } alert("Đã xóa đề thi thành công."); this.renderView('adminManage', { forceReload: true, icon: 'list' }); } catch (error) { console.error("Lỗi khi xóa đề thi:", error); alert("Đã xảy ra lỗi."); } } },
-            renderAdminTestList() { const list = document.getElementById('admin-test-list'); if (!list) return; list.style.display = 'grid'; list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))'; list.style.gap = '20px'; if (this.tests.length === 0) { list.innerHTML = `<p>Chưa có đề thi nào.</p>`; return; } list.innerHTML = ''; this.tests.forEach(test => { const card = document.createElement('div'); card.className = 'test-card'; const safeTitle = test.title.replace(/"/g, '&quot;').replace(/'/g, '&apos;'); card.innerHTML = `<h3>${test.title} ${test.audioUrl ? '🎧' : ''}</h3><p>${test.questions.length} câu - ${test.timeLimit} phút</p><div class="test-card-footer"> <button class="action-button action-btn-small" onclick="app.editTest(${test.id})">Sửa</button> <button class="action-button action-btn-small" style="background-color: var(--info-color);" onclick="app.resetUserAttempts(${test.id}, '${safeTitle}')">Reset Lượt</button> <button class="action-button btn-delete action-btn-small" onclick="app.deleteTest(${test.id})">Xóa</button> </div>`; list.appendChild(card); }); },
+            editTest(testId) {
+                this.navigate('adminCreateTest');
+                setTimeout(() => {
+                    const test = this.tests.find(t => t.id == testId);
+                    if (!test) {
+                        alert("Lỗi: Không tìm thấy đề thi để sửa.");
+                        this.navigate('adminManage', { forceReload: true, icon: 'list' });
+                        return;
+                    }
+                    document.getElementById('create-edit-title').innerText = "Chỉnh Sửa Đề Thi";
+                    document.getElementById('test-id-edit').value = test.id;
+                    document.getElementById('test-title').value = test.title;
+                    document.getElementById('test-time').value = test.timeLimit;
+                    document.getElementById('test-attempts').value = test.maxAttempts === Infinity ? '' : test.maxAttempts;
+                    document.getElementById('test-category').value = test.category;
+                    document.getElementById('allow-view-answer').checked = test.showAnswers !== false;
+                    document.getElementById('test-audio-url').value = test.audioUrl || '';
+                    document.getElementById('save-test-btn').innerText = "CẬP NHẬT";
+                    const rawText = test.questions.map(q => {
+                        let str = '';
+                        if (q.type === 'passage_question' && q.isFirstInGroup) {
+                            str += `[PASSAGE]\n${q.passage}\n---\n`;
+                        }
+                        str += q.prompt + '\n';
+                        for (const key in q.options) {
+                            str += `${key}${q.answer === key ? '*' : ''}) ${q.options[key]}\n`;
+                        }
+                        if (q.explanation) {
+                            str += `[GTHICH] ${q.explanation}`;
+                        }
+                        return str;
+                    }).join('\n---\n');
+                    document.getElementById('quiz-input').value = rawText;
+                }, 0);
+            },
+            async deleteTest(testId) {
+                const testToDelete = this.tests.find(t => t.id == testId);
+                if (!testToDelete) return;
+                if (confirm(`Bạn có chắc chắn muốn xóa đề thi "${testToDelete.title}"? Tất cả kết quả liên quan cũng sẽ bị xóa vĩnh viễn!`)) {
+                    try {
+                        await db.ref('tests/' + testId).remove();
+                        const scoresSnapshot = await db.ref('scores').orderByChild('testId').equalTo(testToDelete.id).once('value');
+                        const scoresToDelete = scoresSnapshot.val();
+                        if (scoresToDelete) {
+                            const updates = {};
+                            Object.keys(scoresToDelete).forEach(key => { updates[key] = null; });
+                            await db.ref('scores').update(updates);
+                        }
+                        alert("Đã xóa đề thi thành công.");
+                        this.renderView('adminManage', { forceReload: true, icon: 'list' });
+                    } catch (error) { console.error("Lỗi khi xóa đề thi:", error); alert("Đã xảy ra lỗi."); }
+                }
+            },
+            renderAdminTestList() {
+                const list = document.getElementById('admin-test-list');
+                if (!list) return;
+                list.style.display = 'grid';
+                list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+                list.style.gap = '20px';
+                if (this.tests.length === 0) {
+                    list.innerHTML = `<p>Chưa có đề thi nào.</p>`;
+                    return;
+                }
+                list.innerHTML = '';
+                this.tests.forEach(test => {
+                    const card = document.createElement('div');
+                    card.className = 'test-card';
+                    const safeTitle = test.title.replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+                    card.innerHTML = `<h3>${test.title} ${test.audioUrl ? '🎧' : ''}</h3><p>${test.questions.length} câu - ${test.timeLimit} phút</p><div class="test-card-footer"> <button class="action-button action-btn-small" onclick="app.editTest('${test.id}')">Sửa</button> <button class="action-button action-btn-small" style="background-color: var(--info-color);" onclick="app.resetUserAttempts('${test.id}', '${safeTitle}')">Reset Lượt</button> <button class="action-button btn-delete action-btn-small" onclick="app.deleteTest('${test.id}')">Xóa</button> </div>`;
+                    list.appendChild(card);
+                });
+            },
             renderManageUsers() { const container = document.getElementById('user-management-table'); if (!container) return; let tableContent = ''; if (this.users.length > 0) { tableContent += `<table class="admin-table"><thead><tr><th>Tên tài khoản</th><th>Số bài đã thi</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>`; this.users.forEach(user => { const isCurrentUserAdmin = user.username === 'admin'; const testsTaken = this.scores.filter(s => s.username === user.username).length; const status = user.isBanned ? '<span style="color:var(--danger-color); font-weight:bold;">Bị cấm</span>' : '<span style="color:var(--success-color);">Hoạt động</span>'; const banButton = user.isBanned ? `<button class="admin-action-btn btn-unban" onclick="app.toggleBanUser('${user.username}')" ${isCurrentUserAdmin ? 'disabled' : ''}>Mở khóa</button>` : `<button class="admin-action-btn btn-ban" onclick="app.toggleBanUser('${user.username}')" ${isCurrentUserAdmin ? 'disabled' : ''}>Cấm</button>`; tableContent += `<tr><td>${user.username} ${user.isAdmin ? '👑' : ''}</td><td>${testsTaken}</td><td>${status}</td><td> <button class="admin-action-btn btn-edit-user" onclick="app.promptEditPassword('${user.username}')">Đổi MK</button> ${banButton} <button class="admin-action-btn btn-clear-scores" onclick="app.clearUserScores('${user.username}')">Xóa Toàn Bộ Điểm</button> </td></tr>`; }); tableContent += `</tbody></table>`; } else { tableContent = '<p>Không có tài khoản người dùng nào.</p>'; } container.innerHTML = tableContent; },
-            renderUserHistory() { const div = document.getElementById('user-history'); if(!div) return; const userScores = this.scores.filter(s => s.username === this.currentUser.username).sort((a,b) => b.date - a.date); if(userScores.length === 0) { div.innerHTML = `<p>Bạn chưa làm bài thi nào.</p>`; return; } div.innerHTML = ''; userScores.forEach(scoreRecord => { const test = this.tests.find(ts => ts.id === scoreRecord.testId); const item = document.createElement('div'); item.className = 'history-item'; let reviewButton = `<button class="btn-review" onclick="app.renderView('resultsView', { scoreRecordKey: '${scoreRecord.key}' })">Xem lại</button>`; if (!test) { reviewButton = `<button class="btn-review" disabled>Đã xóa</button>`; } item.innerHTML = `<div><strong>${test ? test.title : '(Đề đã xóa)'}</strong><br><small style="color:#888">${new Date(scoreRecord.date).toLocaleString()}</small></div><div style="display:flex; align-items:center;"><strong style="font-weight:700;">${scoreRecord.score * 10}/${scoreRecord.total * 10}</strong>${reviewButton}</div>`; div.appendChild(item); }); },
-            renderResults(scoreRecordKey) { const scoreRecord = this.scores.find(s => s.key === scoreRecordKey); if (!scoreRecord) { alert("Lỗi: Không tìm thấy kết quả bài làm."); this.renderView('userDashboard', {forceReload: true}); return;} const test = this.tests.find(t => t.id === scoreRecord.testId); if (!test) { alert("Lỗi: Không tìm thấy dữ liệu đề thi này. Có thể nó đã bị xóa."); this.renderView('userDashboard', {forceReload: true}); return; } this.renderContent('resultsView'); setTimeout(() => { document.getElementById('score-summary').textContent = `Điểm số: ${scoreRecord.score * 10} / ${scoreRecord.total * 10}`; const breakdownContainer = document.getElementById('results-breakdown'); let resultsHtml = ''; let questionCounter = 0; test.questions.forEach((q, i) => { questionCounter++; const userAnswer = scoreRecord.userAnswers ? scoreRecord.userAnswers[i] : null; const isCorrect = userAnswer === q.answer; if (q.type === 'passage_question' && q.isFirstInGroup) { resultsHtml += `<div class="passage-block">${q.passage}</div>`; } resultsHtml += `<div class="result-item" style="border: 1px solid ${isCorrect ? 'var(--success-color)' : 'var(--danger-color)'}; padding: 15px; border-radius: 8px; margin-bottom: 15px;"><h4>Câu ${questionCounter}: ${q.prompt}</h4><p><strong>Bạn chọn:</strong> ${userAnswer && q.options && q.options[userAnswer] ? `(${userAnswer}) ${q.options[userAnswer]}` : '<span style="color:red">Chưa trả lời</span>'}</p>`; if (test.showAnswers !== false) { if (!isCorrect) { resultsHtml += `<p style="color:green;"><strong>Đáp án đúng:</strong> (${q.answer}) ${q.options[q.answer]}</p>`; } if (q.explanation) { resultsHtml += `<div class="explanation" style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;"><strong>Giải thích:</strong> ${q.explanation}</div>`; } } resultsHtml += `</div>`; }); breakdownContainer.innerHTML = resultsHtml; document.getElementById('back-btn').addEventListener('click', () => this.renderView('userDashboard')); }, 0); },
-            async checkAnswers() { if(!this.currentQuiz) return; clearInterval(this.timerInterval); let score = 0; const userAnswers = {}; const quizData = this.currentQuiz; quizData.questions.forEach((q, i) => { const selected = document.querySelector(`input[name="q${i}"]:checked`); userAnswers[i] = selected ? selected.value : null; if (selected && selected.value === q.answer) score++; }); const total = quizData.questions.length; const scoreRecord = { key: db.ref().child('scores').push().key, username: this.currentUser.username, testId: quizData.id, score, total, date: Date.now(), userAnswers }; try { await db.ref('scores/' + scoreRecord.key).set(scoreRecord); this.scores.push(scoreRecord); this.renderResults(scoreRecord.key); } catch (error) { console.error("Lỗi khi nộp bài:", error); alert("Không thể lưu kết quả. Vui lòng kiểm tra kết nối mạng."); } },
-            startQuiz(testId) { const test = this.tests.find(t => t.id === testId); if (!test) return; this.currentQuiz = test; const mainContent = document.getElementById('main-content-area'); let questionsHtml = ''; let questionCounter = 0; test.questions.forEach((q, i) => { let optionsHtml = ''; questionCounter++; for (const key in q.options) { optionsHtml += `<label style="display: block; margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px;"><input type="radio" name="q${i}" value="${key}"> <strong>${key}.</strong> ${q.options[key]}</label>`; } if (q.type === 'passage_question' && q.isFirstInGroup) { questionsHtml += `<div class="passage-block" style="white-space: pre-wrap;">${q.passage}</div>`; } questionsHtml += `<div class="card" style="margin-bottom: 20px;"><p><strong>Câu ${questionCounter}:</strong> ${q.prompt}</p><div class="options">${optionsHtml}</div></div>`; }); mainContent.innerHTML = `<div class="card"><div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;"><h2>${test.title}</h2><div id="timer" style="font-size: 1.5em; font-weight: 700; color: var(--primary-color);"></div></div>${test.audioUrl ? `<audio controls src="${test.audioUrl}" style="width:100%; margin-bottom:20px;"></audio>` : ''}<form id="quiz-form">${questionsHtml}</form><button id="submit-btn" class="action-button">NỘP BÀI</button></div>`; document.getElementById('submit-btn').addEventListener('click', () => this.checkAnswers()); this.startTimer(test.timeLimit * 60); },
-             parseQuizText(text) {
-                const items = [];
-                // Tách toàn bộ input thành các khối dựa trên dấu '---'
-                const blocks = text.trim().split(/\n---\n/);
+            renderUserHistory() {
+                const div = document.getElementById('user-history');
+                if(!div) return;
+                const userScores = this.scores.filter(s => s.username === this.currentUser.username).sort((a,b) => b.date - a.date);
+                if(userScores.length === 0) {
+                    div.innerHTML = `<p>Bạn chưa làm bài thi nào.</p>`;
+                    return;
+                }
+                div.innerHTML = '';
+                userScores.forEach(scoreRecord => {
+                    const test = this.tests.find(ts => ts.id == scoreRecord.testId);
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    let reviewButton = `<button class="btn-review" onclick="app.renderView('resultsView', { scoreRecordKey: '${scoreRecord.key}' })">Xem lại</button>`;
+                    if (!test) { reviewButton = `<button class="btn-review" disabled>Đã xóa</button>`; }
+                    item.innerHTML = `<div><strong>${test ? test.title : '(Đề đã xóa)'}</strong><br><small style="color:#888">${new Date(scoreRecord.date).toLocaleString()}</small></div><div style="display:flex; align-items:center;"><strong style="font-weight:700;">${scoreRecord.score * 10}/${scoreRecord.total * 10}</strong>${reviewButton}</div>`;
+                    div.appendChild(item);
+                });
+            },
+            renderResults(scoreRecordKey) {
+                const scoreRecord = this.scores.find(s => s.key === scoreRecordKey);
+                if (!scoreRecord) { alert("Lỗi: Không tìm thấy kết quả bài làm."); this.renderView('userDashboard', {forceReload: true}); return;}
+                const test = this.tests.find(t => t.id == scoreRecord.testId);
+                if (!test) { alert("Lỗi: Không tìm thấy dữ liệu đề thi này. Có thể nó đã bị xóa."); this.renderView('userDashboard', {forceReload: true}); return; }
+                this.renderContent('resultsView');
+                setTimeout(() => {
+                    document.getElementById('score-summary').textContent = `Điểm số: ${scoreRecord.score * 10} / ${scoreRecord.total * 10}`;
+                    const breakdownContainer = document.getElementById('results-breakdown');
+                    let resultsHtml = '';
+                    let questionCounter = 0;
+                    test.questions.forEach((q, i) => {
+                        questionCounter++;
+                        const userAnswer = scoreRecord.userAnswers ? scoreRecord.userAnswers[i] : null;
+                        const isCorrect = userAnswer === q.answer;
+                        if (q.type === 'passage_question' && q.isFirstInGroup) { resultsHtml += `<div class="passage-block">${q.passage}</div>`; }
+                        resultsHtml += `<div class="result-item" style="border: 1px solid ${isCorrect ? 'var(--success-color)' : 'var(--danger-color)'}; padding: 15px; border-radius: 8px; margin-bottom: 15px;"><h4>Câu ${questionCounter}: ${q.prompt}</h4><p><strong>Bạn chọn:</strong> ${userAnswer && q.options && q.options[userAnswer] ? `(${userAnswer}) ${q.options[userAnswer]}` : '<span style="color:red">Chưa trả lời</span>'}</p>`;
+                        if (test.showAnswers !== false) {
+                            if (!isCorrect) { resultsHtml += `<p style="color:green;"><strong>Đáp án đúng:</strong> (${q.answer}) ${q.options[q.answer]}</p>`; }
+                            if (q.explanation) { resultsHtml += `<div class="explanation" style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;"><strong>Giải thích:</strong> ${q.explanation}</div>`; }
+                        }
+                        resultsHtml += `</div>`;
+                    });
+                    breakdownContainer.innerHTML = resultsHtml;
+                    document.getElementById('back-btn').addEventListener('click', () => this.navigate('userDashboard'));
+                }, 0);
+            },
+            async checkAnswers() {
+                if(!this.currentQuiz) return;
+                this.isQuizActive = false;
+                clearInterval(this.timerInterval);
+                window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+                let score = 0;
+                const userAnswers = {};
+                const quizData = this.currentQuiz;
+                quizData.questions.forEach((q, i) => { const selected = document.querySelector(`input[name="q${i}"]:checked`); userAnswers[i] = selected ? selected.value : null; if (selected && selected.value === q.answer) score++; });
+                const total = quizData.questions.length;
+                const scoreRecord = { key: db.ref().child('scores').push().key, username: this.currentUser.username, testId: quizData.id, score, total, date: Date.now(), userAnswers };
+                try {
+                    await db.ref('scores/' + scoreRecord.key).set(scoreRecord);
+                    this.scores.push(scoreRecord);
+                    this.renderResults(scoreRecord.key);
+                } catch (error) { console.error("Lỗi khi nộp bài:", error); alert("Không thể lưu kết quả. Vui lòng kiểm tra kết nối mạng."); }
+            },
+            startQuiz(testId) {
+                const test = this.tests.find(t => t.id == testId);
+                if (!test) return;
+                this.currentQuiz = test;
+                this.isQuizActive = true;
+                window.addEventListener('beforeunload', this.beforeUnloadHandler);
+
+                // Hiển thị và chuẩn bị palette
+                const paletteContainer = document.getElementById('quiz-palette-container');
+                paletteContainer.classList.add('visible');
                 
+                let paletteHtml = '';
+                for (let i = 0; i < test.questions.length; i++) {
+                    paletteHtml += `<a href="#question-card-${i}" id="palette-btn-${i}" class="palette-btn">${i + 1}</a>`;
+                }
+                paletteContainer.innerHTML = `
+                    <div class="quiz-palette">
+                        <h3>Bảng trả lời</h3>
+                        <div class="palette-grid">${paletteHtml}</div>
+                    </div>`;
+
+                // Render câu hỏi vào khu vực chính
+                const mainContent = document.getElementById('main-content-area');
+                let questionsHtml = '';
+                let questionCounter = 0;
+                test.questions.forEach((q, i) => {
+                    questionCounter++;
+                    let optionsHtml = '';
+                    for (const key in q.options) {
+                        optionsHtml += `<label style="display: block; margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px;"><input type="radio" name="q${i}" value="${key}" onchange="app.updatePalette(${i})"> <strong>${key}.</strong> ${q.options[key]}</label>`;
+                    }
+                    if (q.type === 'passage_question' && q.isFirstInGroup) {
+                        questionsHtml += `<div class="passage-block">${q.passage}</div>`;
+                    }
+                    questionsHtml += `<div class="card" id="question-card-${i}" style="margin-bottom: 20px;"><p><strong>Câu ${questionCounter}:</strong> ${q.prompt}</p><div class="options">${optionsHtml}</div></div>`;
+                });
+                
+                mainContent.innerHTML = `
+                    <div>
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div style="display:flex; justify-content: space-between; align-items: center;">
+                                <h2>${test.title}</h2>
+                                <div id="timer" style="font-size: 1.5em; font-weight: 700; color: var(--primary-color);"></div>
+                            </div>
+                            ${test.audioUrl ? `<audio controls src="${test.audioUrl}" style="width:100%; margin-bottom:20px;"></audio>` : ''}
+                        </div>
+                        <form id="quiz-form">${questionsHtml}</form>
+                        <button id="submit-btn" class="action-button" style="margin-top: 20px;">NỘP BÀI</button>
+                    </div>`;
+                
+                document.getElementById('submit-btn').addEventListener('click', () => this.checkAnswers());
+                this.startTimer(test.timeLimit * 60);
+            },
+            updatePalette(questionIndex) {
+                const paletteBtn = document.getElementById(`palette-btn-${questionIndex}`);
+                if (paletteBtn) {
+                    paletteBtn.classList.add('answered');
+                }
+            },
+            beforeUnloadHandler(event) {
+                if (app.isQuizActive) {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
+            },
+            parseQuizText(text) {
+                const items = [];
+                const blocks = text.trim().split(/\n---\n/);
                 let currentPassage = null;
                 let isFirstQuestionOfPassage = false;
-
                 blocks.forEach(block => {
                     const trimmedBlock = block.trim();
                     if (!trimmedBlock) return;
-
-                    // 1. KIỂM TRA XEM KHỐI NÀY CÓ PHẢI LÀ ĐOẠN VĂN KHÔNG
                     if (trimmedBlock.toUpperCase().startsWith('[PASSAGE]')) {
-                        // Lấy nội dung đoạn văn (bỏ đi tag [PASSAGE])
                         currentPassage = trimmedBlock.substring('[PASSAGE]'.length).trim();
-                        // Đánh dấu để câu hỏi tiếp theo sẽ là câu hỏi đầu tiên của đoạn văn này
-                        isFirstQuestionOfPassage = true; 
-                        // Khối này chỉ chứa đoạn văn, không phải câu hỏi, nên ta bỏ qua và xử lý khối tiếp theo
-                        return; 
+                        isFirstQuestionOfPassage = true;
+                        return;
                     }
-
-                    // 2. NẾU KHÔNG PHẢI ĐOẠN VĂN, XỬ LÝ NHƯ MỘT CÂU HỎI
                     const lines = trimmedBlock.split('\n');
                     const promptLines = [];
                     const optionLines = [];
                     let foundOptions = false;
-
-                    for(const line of lines) {
+                    for (const line of lines) {
                         const trimmedLine = line.trim();
                         if (/^([A-D])(\*?)\)\s*(.*)/.test(trimmedLine) || trimmedLine.toUpperCase().startsWith('[GTHICH]')) {
                             foundOptions = true;
@@ -245,59 +518,84 @@
                         if (foundOptions) {
                             optionLines.push(trimmedLine);
                         } else {
-                            if(trimmedLine) promptLines.push(trimmedLine);
+                            if (trimmedLine) promptLines.push(trimmedLine);
                         }
                     }
-
                     const prompt = promptLines.join('\n').trim();
                     const options = {};
                     let answer = null;
                     let explanation = "";
-
                     optionLines.forEach(line => {
                         const optMatch = line.trim().match(/^([A-D])(\*?)\)\s*(.*)/);
-                        if (optMatch) { 
-                            const [, key, isCorrect, value] = optMatch; 
-                            options[key] = value.trim(); 
-                            if (isCorrect === '*') answer = key; 
-                        } else if (line.trim().toUpperCase().startsWith('[GTHICH]')) { 
+                        if (optMatch) {
+                            const [, key, isCorrect, value] = optMatch;
+                            options[key] = value.trim();
+                            if (isCorrect === '*') answer = key;
+                        } else if (line.trim().toUpperCase().startsWith('[GTHICH]')) {
                             explanation = line.trim().substring('[GTHICH]'.length).trim();
                         }
                     });
-
                     if (prompt && Object.keys(options).length > 0) {
-                        const questionObject = {
-                            type: 'question',
-                            prompt,
-                            options,
-                            answer,
-                            explanation
-                        };
-                        
-                        // Nếu đang có một đoạn văn được ghi nhận (currentPassage)
+                        const questionObject = { type: 'question', prompt, options, answer, explanation };
                         if (currentPassage) {
-                            questionObject.type = 'passage_question'; // Đổi type cho đúng
+                            questionObject.type = 'passage_question';
                             questionObject.passage = currentPassage;
                             questionObject.isFirstInGroup = isFirstQuestionOfPassage;
-
-                            // Sau khi gán cho câu hỏi đầu tiên, các câu sau sẽ không phải là "đầu tiên" nữa
-                            if (isFirstQuestionOfPassage) {
-                                isFirstQuestionOfPassage = false;
-                            }
+                            if (isFirstQuestionOfPassage) { isFirstQuestionOfPassage = false; }
                         }
-                        
                         items.push(questionObject);
                     }
                 });
                 return items;
             },
             renderUserStats: function() { const container = document.getElementById('user-stats-card-container'); if (!container) return; const userScores = this.scores.filter(s => s.username === this.currentUser.username); const uniqueTestsTaken = new Set(userScores.map(s => s.testId)).size; const bestScoresMap = new Map(); userScores.forEach(score => { if (!bestScoresMap.has(score.testId) || score.score > bestScoresMap.get(score.testId).score) { bestScoresMap.set(score.testId, score); } }); const totalPoints = Array.from(bestScoresMap.values()).reduce((sum, score) => sum + (score.score * 10), 0); container.innerHTML = `<div class="card user-stats-card"><h3>Chào, ${this.currentUser.username}!</h3><div class="user-stats-grid"><div class="stat-item"><div class="value">${uniqueTestsTaken}</div><div class="label">Đề đã luyện</div></div><div class="stat-item"><div class="value">${totalPoints.toLocaleString('vi-VN')}</div><div class="label">Tổng điểm</div></div></div></div>`; },
-            renderCategoryShowcase: function() { const container = document.getElementById('category-showcase-grid'); if (!container) return; container.innerHTML = ''; CATEGORIES.forEach(cat => { const card = document.createElement('div'); card.className = 'category-showcase-card'; card.onclick = () => this.renderView('categoryView', { categoryName: cat.name }); card.innerHTML = `<div class="icon"><svg style="width:1em; height:1em;"><use href="#icon-${cat.icon}"></use></svg></div><h3>${cat.name}</h3>`; container.appendChild(card); }); },
-            renderTestGridForCategory: function(categoryName) { const container = document.getElementById('test-grid'); const title = document.getElementById('category-view-title'); if (!container || !title) return; title.innerHTML = `<svg class="icon"><use href="#icon-${CATEGORIES.find(c => c.name === categoryName).icon}"></use></svg> ${categoryName}`; const filteredTests = this.tests.filter(test => test.category === categoryName); if (filteredTests.length === 0) { container.innerHTML = `<p style="text-align:center; padding: 20px;">Chưa có đề thi nào trong mục này. Quay lại sau nhé!</p>`; return; } container.innerHTML = ''; filteredTests.forEach(test => { const attempts = this.scores.filter(s => s.username === this.currentUser.username && s.testId === test.id).length; const canTake = test.maxAttempts === Infinity || attempts < test.maxAttempts; const card = document.createElement('div'); card.className = 'test-card'; let footerHtml = canTake ? `<button class="btn-start" onclick="app.startQuiz(${test.id})">Làm bài</button>` : `<div class="status-locked">Đã hết lượt</div>`; const attemptsText = test.maxAttempts !== Infinity ? `<div style="font-size:0.8em;text-align:center;margin-bottom:8px;">Đã làm: ${attempts}/${test.maxAttempts}</div>` : ''; card.innerHTML = `<div><h3>${test.title} ${test.audioUrl ? '🎧' : ''}</h3><p>${test.questions.length} câu - ${test.timeLimit} phút</p></div><div class="test-card-footer">${attemptsText}${footerHtml}</div>`; container.appendChild(card); }); },
+            renderCategoryShowcase: function() { const container = document.getElementById('category-showcase-grid'); if (!container) return; container.innerHTML = ''; CATEGORIES.forEach(cat => { const card = document.createElement('div'); card.className = 'category-showcase-card'; card.onclick = () => this.navigate('categoryView', { categoryName: cat.name }); card.innerHTML = `<div class="icon"><svg style="width:1em; height:1em;"><use href="#icon-${cat.icon}"></use></svg></div><h3>${cat.name}</h3>`; container.appendChild(card); }); },
+            renderTestGridForCategory: function(categoryName) {
+                const container = document.getElementById('test-grid');
+                const title = document.getElementById('category-view-title');
+                if (!container || !title) return;
+                title.innerHTML = `<svg class="icon"><use href="#icon-${CATEGORIES.find(c => c.name === categoryName).icon}"></use></svg> ${categoryName}`;
+                const filteredTests = this.tests.filter(test => test.category === categoryName);
+                if (filteredTests.length === 0) {
+                    container.innerHTML = `<p style="text-align:center; padding: 20px;">Chưa có đề thi nào trong mục này. Quay lại sau nhé!</p>`;
+                    return;
+                }
+                container.innerHTML = '';
+                filteredTests.forEach(test => {
+                    const attempts = this.scores.filter(s => s.username === this.currentUser.username && s.testId == test.id).length;
+                    const canTake = test.maxAttempts === Infinity || attempts < test.maxAttempts;
+                    const card = document.createElement('div');
+                    card.className = 'test-card';
+                    let footerHtml = canTake ? `<button class="btn-start" onclick="app.startQuiz('${test.id}')">Làm bài</button>` : `<div class="status-locked">Đã hết lượt</div>`;
+                    const attemptsText = test.maxAttempts !== Infinity ? `<div style="font-size:0.8em;text-align:center;margin-bottom:8px;">Đã làm: ${attempts}/${test.maxAttempts}</div>` : '';
+                    card.innerHTML = `<div><h3>${test.title} ${test.audioUrl ? '🎧' : ''}</h3><p>${test.questions.length} câu - ${test.timeLimit} phút</p></div><div class="test-card-footer">${attemptsText}${footerHtml}</div>`;
+                    container.appendChild(card);
+                });
+            },
             renderLeaderboards: function() { clearInterval(this.leaderboardTimerInterval); const container = document.getElementById('leaderboard-container'); if (!container) return; container.innerHTML = `<div class="leaderboard-tabs"><button id="tab-global" class="active">Chung</button><button id="tab-per-test">Theo Đề</button></div><div id="leaderboard-content-container"></div>`; const tabGlobal = document.getElementById('tab-global'); const tabPerTest = document.getElementById('tab-per-test'); const setActiveTab = (activeTab) => { tabGlobal.classList.remove('active'); tabPerTest.classList.remove('active'); activeTab.classList.add('active'); }; tabGlobal.onclick = () => { setActiveTab(tabGlobal); this.renderGlobalLeaderboardContent(); }; tabPerTest.onclick = () => { setActiveTab(tabPerTest); this.renderPerTestLeaderboardSelector(); }; this.renderGlobalLeaderboardContent(); const timerEl = document.getElementById('leaderboard-timer'); let nextUpdate = localStorage.getItem('quiz_next_update_v4'); if (!nextUpdate || Date.now() > parseInt(nextUpdate)) { nextUpdate = Date.now() + 24 * 60 * 60 * 1000; localStorage.setItem('quiz_next_update_v4', nextUpdate); } this.leaderboardTimerInterval = setInterval(() => { const remaining = parseInt(nextUpdate) - Date.now(); if (remaining <= 0) { timerEl.textContent = 'Đang cập nhật...'; localStorage.removeItem('quiz_next_update_v4'); location.reload(); } else { const hours = Math.floor(remaining / 36e5), minutes = Math.floor((remaining / 6e4) % 60), seconds = Math.floor((remaining / 1e3) % 60); timerEl.textContent = `BXH Chung làm mới sau: ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`; } }, 1000); },
             renderGlobalLeaderboardContent: function() { const container = document.getElementById('leaderboard-content-container'); if (!container) return; const userPoints = new Map(); this.users.forEach(user => { const userScores = this.scores.filter(s => s.username === user.username); const bestScoresMap = new Map(); userScores.forEach(score => { if (!bestScoresMap.has(score.testId) || score.score > bestScoresMap.get(score.testId).score) { bestScoresMap.set(score.testId, score); } }); const totalPoints = Array.from(bestScoresMap.values()).reduce((sum, score) => sum + (score.score * 10), 0); userPoints.set(user.username, totalPoints); }); const sortedUsers = Array.from(userPoints.entries()).sort(([, pointsA], [, pointsB]) => pointsB - pointsA); if (sortedUsers.length === 0) { container.innerHTML = `<p>Chưa có dữ liệu xếp hạng.</p>`; return; } let html = ''; sortedUsers.forEach(([username, points], i) => { html += `<div style="display:flex; align-items:center; margin-bottom:10px;"><div style="font-weight:700; margin-right:15px; width:20px;">${i + 1}.</div><div><strong>${username} ${this.users.find(u=>u.username===username)?.isAdmin ? '👑' : ''}</strong></div><div style="margin-left:auto; color:var(--primary-color); font-weight:700; display:flex; align-items:center;">${points.toLocaleString('vi-VN')}<svg class="icon icon-fire"><use href="#icon-fire"></use></svg></div></div>`; }); container.innerHTML = html; },
             renderPerTestLeaderboardSelector: function() { const container = document.getElementById('leaderboard-content-container'); if (!container) return; if (this.tests.length === 0) { container.innerHTML = '<p>Chưa có bài thi nào để xếp hạng.</p>'; return; } let options = this.tests.map(test => `<option value="${test.id}">${test.title}</option>`).join(''); container.innerHTML = `<div id="per-test-leaderboard-selector" class="input-group"><select onchange="app.renderPerTestLeaderboardContent(this.value)">${options}</select></div><div id="per-test-leaderboard-content"></div>`; if (this.tests.length > 0) {this.renderPerTestLeaderboardContent(this.tests[0].id);} },
-            renderPerTestLeaderboardContent: function(testId) { const contentDiv = document.getElementById('per-test-leaderboard-content') || document.getElementById('leaderboard-content-container'); if (!contentDiv || !testId) return; const testScores = this.scores.filter(s => s.testId == testId); const bestScores = new Map(); testScores.forEach(score => { if (!bestScores.has(score.username) || score.score > bestScores.get(score.username).score) { bestScores.set(score.username, score); } }); const sortedUsers = Array.from(bestScores.values()).sort((a, b) => b.score - a.score); if (sortedUsers.length === 0) { contentDiv.innerHTML = `<p style="text-align:center; color:#888;">Chưa có dữ liệu cho bài thi này.</p>`; return; } let html = ''; sortedUsers.forEach((u, i) => { html += `<div style="display:flex; align-items:center; margin-bottom:10px;"><div style="font-weight:700; margin-right:15px; width:20px;">${i+1}.</div><div><strong>${u.username} ${this.users.find(user=>user.username===u.username)?.isAdmin ? '👑' : ''}</strong></div><div style="margin-left:auto; color:var(--primary-color); font-weight:700;">${u.score * 10} / ${u.total * 10}</div></div>`; }); contentDiv.innerHTML = html; },
+            renderPerTestLeaderboardContent: function(testId) {
+                const contentDiv = document.getElementById('per-test-leaderboard-content') || document.getElementById('leaderboard-content-container');
+                if (!contentDiv || !testId) return;
+                const testScores = this.scores.filter(s => s.testId == testId);
+                const bestScores = new Map();
+                testScores.forEach(score => {
+                    if (!bestScores.has(score.username) || score.score > bestScores.get(score.username).score) {
+                        bestScores.set(score.username, score);
+                    }
+                });
+                const sortedUsers = Array.from(bestScores.values()).sort((a, b) => b.score - a.score);
+                if (sortedUsers.length === 0) {
+                    contentDiv.innerHTML = `<p style="text-align:center; color:#888;">Chưa có dữ liệu cho bài thi này.</p>`;
+                    return;
+                }
+                let html = '';
+                sortedUsers.forEach((u, i) => {
+                    html += `<div style="display:flex; align-items:center; margin-bottom:10px;"><div style="font-weight:700; margin-right:15px; width:20px;">${i+1}.</div><div><strong>${u.username} ${this.users.find(user=>user.username===u.username)?.isAdmin ? '👑' : ''}</strong></div><div style="margin-left:auto; color:var(--primary-color); font-weight:700;">${u.score * 10} / ${u.total * 10}</div></div>`;
+                });
+                contentDiv.innerHTML = html;
+            },
             renderProgressChart: function() { const ctx = document.getElementById('progress-chart'); if (!ctx) return; const userScores = this.scores.filter(s => s.username === this.currentUser.username).sort((a,b) => a.date - b.date); if (this.progressChart) { this.progressChart.destroy(); } if (userScores.length < 2) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); ctx.outerHTML = '<canvas id="progress-chart"></canvas><p style="text-align:center; color:#888;">Cần ít nhất 2 lần làm bài để vẽ biểu đồ.</p>'; return; } const labels = []; const dataPoints = []; let cumulativeScore = 0; const bestScoresMap = new Map(); userScores.forEach(score => { bestScoresMap.set(score.testId, Math.max(bestScoresMap.get(score.testId) || 0, score.score)); cumulativeScore = Array.from(bestScoresMap.values()).reduce((sum, s) => sum + (s * 10), 0); labels.push(new Date(score.date).toLocaleDateString('vi-VN')); dataPoints.push(cumulativeScore); }); this.progressChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Tổng điểm tích lũy', data: dataPoints, fill: true, backgroundColor: 'rgba(255, 126, 154, 0.2)', borderColor: 'rgba(255, 126, 154, 1)', tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: true } }); },
             renderTipOfTheDay: function() { const container = document.getElementById('tip-of-the-day-card'); if (!container) return; const tip = this.studyTips[Math.floor(Math.random() * this.studyTips.length)]; container.innerHTML = `<h3><svg class="icon" style="width:1.2em; height:1.2em; margin-right: 8px;"><use href="#icon-lightbulb"></use></svg>Góc học tập</h3><p>"${tip}"</p>`; },
             startTimer: function(duration) { let t = duration; const el = document.getElementById('timer'); clearInterval(this.timerInterval); this.timerInterval = setInterval(() => { let m = Math.floor(t / 60), s = t % 60; if(el) el.innerHTML = `<svg class="icon" style="width:1em; height:1em; vertical-align: -0.1em; margin-right: 5px;"><use href="#icon-clock"></use></svg>${m<10?'0':''}${m}:${s<10?'0':''}${s}`; if(--t < 0){ clearInterval(this.timerInterval); alert("Hết giờ làm bài!"); this.checkAnswers(); } }, 1000); },
