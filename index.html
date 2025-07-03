@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        /* CSS không thay đổi */
+        /* CSS không thay đổi, giữ nguyên như phiên bản trước */
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;700&display=swap');
         :root {
             --primary-color: #ff7e9a; --secondary-color: #8A2BE2; --light-color: #fff; --text-color: #4a4a4a;
@@ -90,14 +90,9 @@
         .tip-card { background: linear-gradient(135deg, #8A2BE2, #9b59b6); color: white; }
         .tip-card h3 { color: white; font-size: 1.2em; margin: 0 0 10px 0; }
         .tip-card p { font-size: 1em; font-style: italic; }
-        .passage-block { background: #f7f7f7; border-left: 4px solid var(--primary-color); padding: 15px; margin-bottom: 20px; border-radius: 8px; white-space: pre-wrap; }
+        .passage-block { background: #f7f7f7; border-left: 4px solid var(--primary-color); padding: 15px; margin-bottom: 20px; border-radius: 8px; white-space: pre-wrap; max-height: 250px; overflow-y: auto; }
         .history-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
         .btn-review { font-size: 0.8em; padding: 4px 8px; margin-left: 10px; background-color: var(--info-color); color: white; border-radius: 5px; border: none; cursor: pointer; }
-        .sidebar-nav-dropdown { position: relative; }
-        .sidebar-nav-dropdown-content { display: none; position: absolute; background-color: #f9f9f9; min-width: 220px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; border-radius: 10px; left: 100%; top: 0; margin-left: 10px; }
-        .sidebar-nav-dropdown:hover .sidebar-nav-dropdown-content { display: block; }
-        .sidebar-nav-dropdown-content a { color: black; padding: 12px 16px; text-decoration: none; display: block; font-size: 1em; font-weight: 700; }
-        .sidebar-nav-dropdown-content a:hover { background-color: #f1f1f1; color: var(--primary-color); }
         @media (max-width: 992px) { #user-dashboard-layout { flex-direction: column; } }
         @media (max-width: 768px) { #app-body { flex-direction: column; } #sidebar-nav { width: 100%; height: auto; flex-direction: row; justify-content: space-around; padding: 10px; } #main-content-area { padding: 15px; } }
     </style>
@@ -123,16 +118,8 @@
     <div id="app-root"></div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBdBitxn6awNnMNo635WtDNSKuNodp9ACI",
-            authDomain: "my-sql-to-english.firebaseapp.com",
-            databaseURL: "https://my-sql-to-english-default-rtdb.firebaseio.com",
-            projectId: "my-sql-to-english",
-            storageBucket: "my-sql-to-english.firebasestorage.app",
-            messagingSenderId: "56688139064",
-            appId: "1:56688139064:web:48ec3e898815f3c56e7fcd",
-            measurementId: "G-34BJ7YEY5R"
-        };
+        // Copy firebaseConfig của bạn vào đây
+        const firebaseConfig = { apiKey: "AIzaSyBdBitxn6awNnMNo635WtDNSKuNodp9ACI", authDomain: "my-sql-to-english.firebaseapp.com", databaseURL: "https://my-sql-to-english-default-rtdb.firebaseio.com", projectId: "my-sql-to-english", storageBucket: "my-sql-to-english.firebasestorage.app", messagingSenderId: "56688139064", appId: "1:56688139064:web:48ec3e898815f3c56e7fcd", measurementId: "G-34BJ7YEY5R" };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
         
@@ -179,7 +166,9 @@
                 document.querySelectorAll('.sidebar-nav-btn').forEach(b => b.classList.remove('active'));
                 const activeBtn = Array.from(document.querySelectorAll('.sidebar-nav-btn')).find(btn => btn.innerHTML.includes(`icon-${data.icon || viewName.replace('admin','')}`));
                 if (activeBtn) activeBtn.classList.add('active');
+                
                 this.renderContent(viewName);
+                
                 if (viewName === 'adminManage') this.renderAdminTestList();
                 if (viewName === 'adminManageUsers') this.renderManageUsers();
                 if (viewName === 'userDashboard') { this.renderUserStats(); this.renderCategoryShowcase(); this.renderLeaderboards(); this.renderProgressChart(); this.renderUserHistory(); this.renderTipOfTheDay(); }
@@ -215,40 +204,42 @@
             editTest(testId) { this.renderView('adminCreateTest'); setTimeout(() => { const test = this.tests.find(t => t.id === testId); if (!test) return; document.getElementById('create-edit-title').innerText = "Chỉnh Sửa Đề Thi"; document.getElementById('test-id-edit').value = test.id; document.getElementById('test-title').value = test.title; document.getElementById('test-time').value = test.timeLimit; document.getElementById('test-attempts').value = test.maxAttempts === Infinity ? '' : test.maxAttempts; document.getElementById('test-category').value = test.category; document.getElementById('allow-view-answer').checked = test.showAnswers !== false; document.getElementById('test-audio-url').value = test.audioUrl; document.getElementById('save-test-btn').innerText = "CẬP NHẬT"; const rawText = test.questions.map(q => { let str = ''; if (q.type === 'passage_question' && q.isFirstInGroup) { str += `[PASSAGE]\n${q.passage}\n---\n`; } str += q.prompt + '\n'; for (const key in q.options) { str += `${key}${q.answer === key ? '*' : ''}) ${q.options[key]}\n`; } if (q.explanation) { str += `[GTHICH] ${q.explanation}`; } return str; }).join('\n---\n'); document.getElementById('quiz-input').value = rawText; }, 0); },
             async deleteTest(testId) { const testToDelete = this.tests.find(t => t.id === testId); if (!testToDelete) return; if (confirm(`Bạn có chắc chắn muốn xóa đề thi "${testToDelete.title}"? Tất cả kết quả liên quan cũng sẽ bị xóa vĩnh viễn!`)) { try { await db.ref('tests/' + testId).remove(); const scoresSnapshot = await db.ref('scores').orderByChild('testId').equalTo(testId).once('value'); const scoresToDelete = scoresSnapshot.val(); if (scoresToDelete) { const updates = {}; Object.keys(scoresToDelete).forEach(key => { updates[key] = null; }); await db.ref('scores').update(updates); } alert("Đã xóa đề thi thành công."); this.renderView('adminManage', { forceReload: true, icon: 'list' }); } catch (error) { console.error("Lỗi khi xóa đề thi:", error); alert("Đã xảy ra lỗi."); } } },
             renderAdminTestList() { const list = document.getElementById('admin-test-list'); if (!list) return; list.style.display = 'grid'; list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))'; list.style.gap = '20px'; if (this.tests.length === 0) { list.innerHTML = `<p>Chưa có đề thi nào.</p>`; return; } list.innerHTML = ''; this.tests.forEach(test => { const card = document.createElement('div'); card.className = 'test-card'; const safeTitle = test.title.replace(/"/g, '&quot;').replace(/'/g, '&apos;'); card.innerHTML = `<h3>${test.title} ${test.audioUrl ? '🎧' : ''}</h3><p>${test.questions.length} câu - ${test.timeLimit} phút</p><div class="test-card-footer"> <button class="action-button action-btn-small" onclick="app.editTest(${test.id})">Sửa</button> <button class="action-button action-btn-small" style="background-color: var(--info-color);" onclick="app.resetUserAttempts(${test.id}, '${safeTitle}')">Reset Lượt</button> <button class="action-button btn-delete action-btn-small" onclick="app.deleteTest(${test.id})">Xóa</button> </div>`; list.appendChild(card); }); },
-            renderManageUsers() { const container = document.getElementById('user-management-table'); if (!container) return; let tableContent = ''; if (this.users.length > 0) { tableContent += `<table class="admin-table"><thead><tr><th>Tên tài khoản</th><th>Số bài đã thi</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>`; this.users.forEach(user => { const isCurrentUserAdmin = user.username === 'admin'; const testsTaken = this.scores.filter(s => s.username === user.username).length; const status = user.isBanned ? '<span style="color:var(--danger-color); font-weight:bold;">Bị cấm</span>' : '<span style="color:var(--success-color);">Hoạt động</span>'; const banButton = user.isBanned ? `<button class="admin-action-btn btn-unban" onclick="app.toggleBanUser('${user.username}')" ${isCurrentUserAdmin ? 'disabled' : ''}>Mở khóa</button>` : `<button class="admin-action-btn btn-ban" onclick="app.toggleBanUser('${user.username}')" ${isCurrentUserAdmin ? 'disabled' : ''}>Cấm</button>`; tableContent += `<tr><td>${user.username} ${user.isAdmin ? '👑' : ''}</td><td>${testsTaken}</td><td>${status}</td><td> <button class="admin-action-btn btn-edit-user" onclick="app.promptEditPassword('${user.username}')">Đổi MK</button> ${banButton} <button class="admin-action-btn btn-clear-scores" onclick="app.clearUserScores('${user.username}')" ${isCurrentUserAdmin ? 'disabled' : ''}>Xóa Toàn Bộ Điểm</button> </td></tr>`; }); tableContent += `</tbody></table>`; } else { tableContent = '<p>Không có tài khoản người dùng nào.</p>'; } container.innerHTML = tableContent; },
+            renderManageUsers() { const container = document.getElementById('user-management-table'); if (!container) return; let tableContent = ''; if (this.users.length > 0) { tableContent += `<table class="admin-table"><thead><tr><th>Tên tài khoản</th><th>Số bài đã thi</th><th>Trạng thái</th><th>Hành động</th></tr></thead><tbody>`; this.users.forEach(user => { const isCurrentUserAdmin = user.username === 'admin'; const testsTaken = this.scores.filter(s => s.username === user.username).length; const status = user.isBanned ? '<span style="color:var(--danger-color); font-weight:bold;">Bị cấm</span>' : '<span style="color:var(--success-color);">Hoạt động</span>'; const banButton = user.isBanned ? `<button class="admin-action-btn btn-unban" onclick="app.toggleBanUser('${user.username}')" ${isCurrentUserAdmin ? 'disabled' : ''}>Mở khóa</button>` : `<button class="admin-action-btn btn-ban" onclick="app.toggleBanUser('${user.username}')" ${isCurrentUserAdmin ? 'disabled' : ''}>Cấm</button>`; tableContent += `<tr><td>${user.username} ${user.isAdmin ? '👑' : ''}</td><td>${testsTaken}</td><td>${status}</td><td> <button class="admin-action-btn btn-edit-user" onclick="app.promptEditPassword('${user.username}')">Đổi MK</button> ${banButton} <button class="admin-action-btn btn-clear-scores" onclick="app.clearUserScores('${user.username}')">Xóa Toàn Bộ Điểm</button> </td></tr>`; }); tableContent += `</tbody></table>`; } else { tableContent = '<p>Không có tài khoản người dùng nào.</p>'; } container.innerHTML = tableContent; },
             renderUserHistory() { const div = document.getElementById('user-history'); if(!div) return; const userScores = this.scores.filter(s => s.username === this.currentUser.username).sort((a,b) => b.date - a.date); if(userScores.length === 0) { div.innerHTML = `<p>Bạn chưa làm bài thi nào.</p>`; return; } div.innerHTML = ''; userScores.forEach(scoreRecord => { const test = this.tests.find(ts => ts.id === scoreRecord.testId); const item = document.createElement('div'); item.className = 'history-item'; let reviewButton = `<button class="btn-review" onclick="app.renderView('resultsView', { scoreRecordKey: '${scoreRecord.key}' })">Xem lại</button>`; if (!test) { reviewButton = `<button class="btn-review" disabled>Đã xóa</button>`; } item.innerHTML = `<div><strong>${test ? test.title : '(Đề đã xóa)'}</strong><br><small style="color:#888">${new Date(scoreRecord.date).toLocaleString()}</small></div><div style="display:flex; align-items:center;"><strong style="font-weight:700;">${scoreRecord.score * 10}/${scoreRecord.total * 10}</strong>${reviewButton}</div>`; div.appendChild(item); }); },
             renderResults(scoreRecordKey) { const scoreRecord = this.scores.find(s => s.key === scoreRecordKey); if (!scoreRecord) { alert("Lỗi: Không tìm thấy kết quả bài làm."); this.renderView('userDashboard', {forceReload: true}); return;} const test = this.tests.find(t => t.id === scoreRecord.testId); if (!test) { alert("Lỗi: Không tìm thấy dữ liệu đề thi này. Có thể nó đã bị xóa."); this.renderView('userDashboard', {forceReload: true}); return; } this.renderContent('resultsView'); setTimeout(() => { document.getElementById('score-summary').textContent = `Điểm số: ${scoreRecord.score * 10} / ${scoreRecord.total * 10}`; const breakdownContainer = document.getElementById('results-breakdown'); let resultsHtml = ''; let questionCounter = 0; test.questions.forEach((q, i) => { questionCounter++; const userAnswer = scoreRecord.userAnswers ? scoreRecord.userAnswers[i] : null; const isCorrect = userAnswer === q.answer; if (q.type === 'passage_question' && q.isFirstInGroup) { resultsHtml += `<div class="passage-block">${q.passage}</div>`; } resultsHtml += `<div class="result-item" style="border: 1px solid ${isCorrect ? 'var(--success-color)' : 'var(--danger-color)'}; padding: 15px; border-radius: 8px; margin-bottom: 15px;"><h4>Câu ${questionCounter}: ${q.prompt}</h4><p><strong>Bạn chọn:</strong> ${userAnswer && q.options && q.options[userAnswer] ? `(${userAnswer}) ${q.options[userAnswer]}` : '<span style="color:red">Chưa trả lời</span>'}</p>`; if (test.showAnswers !== false) { if (!isCorrect) { resultsHtml += `<p style="color:green;"><strong>Đáp án đúng:</strong> (${q.answer}) ${q.options[q.answer]}</p>`; } if (q.explanation) { resultsHtml += `<div class="explanation" style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin-top: 10px;"><strong>Giải thích:</strong> ${q.explanation}</div>`; } } resultsHtml += `</div>`; }); breakdownContainer.innerHTML = resultsHtml; document.getElementById('back-btn').addEventListener('click', () => this.renderView('userDashboard')); }, 0); },
             async checkAnswers() { if(!this.currentQuiz) return; clearInterval(this.timerInterval); let score = 0; const userAnswers = {}; const quizData = this.currentQuiz; quizData.questions.forEach((q, i) => { const selected = document.querySelector(`input[name="q${i}"]:checked`); userAnswers[i] = selected ? selected.value : null; if (selected && selected.value === q.answer) score++; }); const total = quizData.questions.length; const scoreRecord = { key: db.ref().child('scores').push().key, username: this.currentUser.username, testId: quizData.id, score, total, date: Date.now(), userAnswers }; try { await db.ref('scores/' + scoreRecord.key).set(scoreRecord); this.scores.push(scoreRecord); this.renderResults(scoreRecord.key); } catch (error) { console.error("Lỗi khi nộp bài:", error); alert("Không thể lưu kết quả. Vui lòng kiểm tra kết nối mạng."); } },
             startQuiz(testId) { const test = this.tests.find(t => t.id === testId); if (!test) return; this.currentQuiz = test; const mainContent = document.getElementById('main-content-area'); let questionsHtml = ''; let questionCounter = 0; test.questions.forEach((q, i) => { let optionsHtml = ''; questionCounter++; for (const key in q.options) { optionsHtml += `<label style="display: block; margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 8px;"><input type="radio" name="q${i}" value="${key}"> <strong>${key}.</strong> ${q.options[key]}</label>`; } if (q.type === 'passage_question' && q.isFirstInGroup) { questionsHtml += `<div class="passage-block" style="white-space: pre-wrap;">${q.passage}</div>`; } questionsHtml += `<div class="card" style="margin-bottom: 20px;"><p><strong>Câu ${questionCounter}:</strong> ${q.prompt}</p><div class="options">${optionsHtml}</div></div>`; }); mainContent.innerHTML = `<div class="card"><div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;"><h2>${test.title}</h2><div id="timer" style="font-size: 1.5em; font-weight: 700; color: var(--primary-color);"></div></div>${test.audioUrl ? `<audio controls src="${test.audioUrl}" style="width:100%; margin-bottom:20px;"></audio>` : ''}<form id="quiz-form">${questionsHtml}</form><button id="submit-btn" class="action-button">NỘP BÀI</button></div>`; document.getElementById('submit-btn').addEventListener('click', () => this.checkAnswers()); this.startTimer(test.timeLimit * 60); },
-            
-            // [SỬA LỖI] Logic parseQuizText đã được sửa lại hoàn toàn
-            parseQuizText(text) {
+             parseQuizText(text) {
                 const items = [];
+                // Tách toàn bộ input thành các khối dựa trên dấu '---'
+                const blocks = text.trim().split(/\n---\n/);
+                
                 let currentPassage = null;
-                const blocks = text.trim().split('---');
+                let isFirstQuestionOfPassage = false;
 
-                for (const block of blocks) {
-                    if (!block.trim()) continue;
+                blocks.forEach(block => {
+                    const trimmedBlock = block.trim();
+                    if (!trimmedBlock) return;
 
-                    const lines = block.trim().split('\n').filter(line => line.trim() !== '');
-                    if (lines.length === 0) continue;
-
-                    let firstLine = lines[0].trim();
-
-                    if (firstLine.startsWith('[PASSAGE]')) {
-                        currentPassage = firstLine.replace('[PASSAGE]', '').trim();
-                        // Nếu block chỉ có passage, bỏ qua và chờ câu hỏi ở block sau
-                        if (lines.length === 1 && (blocks.indexOf(block) < blocks.length - 1)) continue; 
-                        lines.shift(); // Bỏ dòng [PASSAGE] đi để xử lý câu hỏi ngay sau đó
+                    // 1. KIỂM TRA XEM KHỐI NÀY CÓ PHẢI LÀ ĐOẠN VĂN KHÔNG
+                    if (trimmedBlock.toUpperCase().startsWith('[PASSAGE]')) {
+                        // Lấy nội dung đoạn văn (bỏ đi tag [PASSAGE])
+                        currentPassage = trimmedBlock.substring('[PASSAGE]'.length).trim();
+                        // Đánh dấu để câu hỏi tiếp theo sẽ là câu hỏi đầu tiên của đoạn văn này
+                        isFirstQuestionOfPassage = true; 
+                        // Khối này chỉ chứa đoạn văn, không phải câu hỏi, nên ta bỏ qua và xử lý khối tiếp theo
+                        return; 
                     }
-                    
+
+                    // 2. NẾU KHÔNG PHẢI ĐOẠN VĂN, XỬ LÝ NHƯ MỘT CÂU HỎI
+                    const lines = trimmedBlock.split('\n');
                     const promptLines = [];
                     const optionLines = [];
                     let foundOptions = false;
-                    
+
                     for(const line of lines) {
                         const trimmedLine = line.trim();
-                        if (/^([A-D])(\*?)\)\s*(.*)/.test(trimmedLine) || trimmedLine.startsWith('[GTHICH]')) {
+                        if (/^([A-D])(\*?)\)\s*(.*)/.test(trimmedLine) || trimmedLine.toUpperCase().startsWith('[GTHICH]')) {
                             foundOptions = true;
                         }
                         if (foundOptions) {
@@ -262,32 +253,44 @@
                     const options = {};
                     let answer = null;
                     let explanation = "";
-                    
+
                     optionLines.forEach(line => {
                         const optMatch = line.trim().match(/^([A-D])(\*?)\)\s*(.*)/);
-                        if (optMatch) { const [, key, isCorrect, value] = optMatch; options[key] = value.trim(); if (isCorrect) answer = key; } 
-                        else if (line.trim().startsWith('[GTHICH]')) { explanation = line.trim().replace('[GTHICH]', '').trim(); }
+                        if (optMatch) { 
+                            const [, key, isCorrect, value] = optMatch; 
+                            options[key] = value.trim(); 
+                            if (isCorrect === '*') answer = key; 
+                        } else if (line.trim().toUpperCase().startsWith('[GTHICH]')) { 
+                            explanation = line.trim().substring('[GTHICH]'.length).trim();
+                        }
                     });
 
                     if (prompt && Object.keys(options).length > 0) {
-                        items.push({ type: currentPassage ? 'passage_question' : 'question', passage: currentPassage, prompt, options, answer, explanation });
-                    }
-                }
-                
-                let lastPassage = null;
-                items.forEach(item => {
-                    if (item.type === 'passage_question') {
-                        if (item.passage !== lastPassage) {
-                            item.isFirstInGroup = true;
-                            lastPassage = item.passage;
-                        } else {
-                            item.isFirstInGroup = false;
+                        const questionObject = {
+                            type: 'question',
+                            prompt,
+                            options,
+                            answer,
+                            explanation
+                        };
+                        
+                        // Nếu đang có một đoạn văn được ghi nhận (currentPassage)
+                        if (currentPassage) {
+                            questionObject.type = 'passage_question'; // Đổi type cho đúng
+                            questionObject.passage = currentPassage;
+                            questionObject.isFirstInGroup = isFirstQuestionOfPassage;
+
+                            // Sau khi gán cho câu hỏi đầu tiên, các câu sau sẽ không phải là "đầu tiên" nữa
+                            if (isFirstQuestionOfPassage) {
+                                isFirstQuestionOfPassage = false;
+                            }
                         }
+                        
+                        items.push(questionObject);
                     }
                 });
                 return items;
             },
-            
             renderUserStats: function() { const container = document.getElementById('user-stats-card-container'); if (!container) return; const userScores = this.scores.filter(s => s.username === this.currentUser.username); const uniqueTestsTaken = new Set(userScores.map(s => s.testId)).size; const bestScoresMap = new Map(); userScores.forEach(score => { if (!bestScoresMap.has(score.testId) || score.score > bestScoresMap.get(score.testId).score) { bestScoresMap.set(score.testId, score); } }); const totalPoints = Array.from(bestScoresMap.values()).reduce((sum, score) => sum + (score.score * 10), 0); container.innerHTML = `<div class="card user-stats-card"><h3>Chào, ${this.currentUser.username}!</h3><div class="user-stats-grid"><div class="stat-item"><div class="value">${uniqueTestsTaken}</div><div class="label">Đề đã luyện</div></div><div class="stat-item"><div class="value">${totalPoints.toLocaleString('vi-VN')}</div><div class="label">Tổng điểm</div></div></div></div>`; },
             renderCategoryShowcase: function() { const container = document.getElementById('category-showcase-grid'); if (!container) return; container.innerHTML = ''; CATEGORIES.forEach(cat => { const card = document.createElement('div'); card.className = 'category-showcase-card'; card.onclick = () => this.renderView('categoryView', { categoryName: cat.name }); card.innerHTML = `<div class="icon"><svg style="width:1em; height:1em;"><use href="#icon-${cat.icon}"></use></svg></div><h3>${cat.name}</h3>`; container.appendChild(card); }); },
             renderTestGridForCategory: function(categoryName) { const container = document.getElementById('test-grid'); const title = document.getElementById('category-view-title'); if (!container || !title) return; title.innerHTML = `<svg class="icon"><use href="#icon-${CATEGORIES.find(c => c.name === categoryName).icon}"></use></svg> ${categoryName}`; const filteredTests = this.tests.filter(test => test.category === categoryName); if (filteredTests.length === 0) { container.innerHTML = `<p style="text-align:center; padding: 20px;">Chưa có đề thi nào trong mục này. Quay lại sau nhé!</p>`; return; } container.innerHTML = ''; filteredTests.forEach(test => { const attempts = this.scores.filter(s => s.username === this.currentUser.username && s.testId === test.id).length; const canTake = test.maxAttempts === Infinity || attempts < test.maxAttempts; const card = document.createElement('div'); card.className = 'test-card'; let footerHtml = canTake ? `<button class="btn-start" onclick="app.startQuiz(${test.id})">Làm bài</button>` : `<div class="status-locked">Đã hết lượt</div>`; const attemptsText = test.maxAttempts !== Infinity ? `<div style="font-size:0.8em;text-align:center;margin-bottom:8px;">Đã làm: ${attempts}/${test.maxAttempts}</div>` : ''; card.innerHTML = `<div><h3>${test.title} ${test.audioUrl ? '🎧' : ''}</h3><p>${test.questions.length} câu - ${test.timeLimit} phút</p></div><div class="test-card-footer">${attemptsText}${footerHtml}</div>`; container.appendChild(card); }); },
